@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
-import time
+from urllib.parse import urlparse
 
 def initialize_json_file(filename="scraped_data.json"):
     """Initialize the JSON file if it doesn't exist"""
@@ -84,51 +84,67 @@ def get_article_urls_from_archive(archive_url):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, 'html.parser')
         
-        # Print HTML structure to understand the page layout
-        print("=== SAVING HTML STRUCTURE TO FILE ===")
-        with open('page_structure.html', 'w', encoding='utf-8') as f:
-            f.write(soup.prettify())
-        print("HTML structure saved to 'page_structure.html'")
-        
-        # Also print table structure specifically
-        print("=== TABLE STRUCTURE ANALYSIS ===")
-        tables = soup.find_all('table')
-        print(f"Found {len(tables)} tables on the page")
-        
-        for i, table in enumerate(tables):
-            tds = table.find_all('td')
-            print(f"Table {i}: {len(tds)} TD elements")
-            if len(tds) >= 3:  # If it has 3+ columns (left, middle, right)
-                print(f"  - This might be the main layout table")
-                for j, td in enumerate(tds[:3]):  # Look at first 3 TDs
-                    links_in_td = td.find_all('a', href=True)
-                    news_links = [link['href'] for link in links_in_td if 'news.antiwar.com' in link.get('href', '')]
-                    print(f"    TD {j}: {len(links_in_td)} total links, {len(news_links)} news links")
-        
-        # Your original link extraction (for now)
+        # Get ALL article links - look for links that appear to be news articles
         article_links = []
+        
         for link in soup.find_all('a', href=True):
             href = link['href']
-            if href.startswith('https://news.antiwar.com/2025/'):
-                article_links.append(href)
+            
+            # Skip internal navigation and non-article links
+            if any(skip in href for skip in [
+                'antiwar.com/who.php', 'antiwar.com/search', 'antiwar.com/contact',
+                'antiwar.com/donate', 'antiwar.com/blog/', 'antiwar.com/latest.php',
+                'antiwar.com/viewpoints.php', 'antiwar.com/regions', 'antiwar.com/past',
+                'javascript:', 'mailto:', '#', 'twitter.com', 'youtube.com',
+                'amazon-adsystem.com', 'googletagservices.com', 'randolphbourne.org'
+            ]):
+                continue
+                
+            # Look for actual article URLs - these usually have dates or news content
+            if any(indicator in href for indicator in [
+                '/2024/', '/2025/', 'news.', 'article', '/news/', '/politics/',
+                '/world/', '/international/', '/war/', '/conflict/', '/middle-east/',
+                'aljazeera.com', 'middleeasteye.net', 'theamericanconservative.com',
+                'dropsitenews.com', 'mondoweiss.net', 'thecradle.co', 'newlinesmag.com',
+                'libertarianinstitute.org', 'original.antiwar.com'
+            ]):
+                # Make sure it's a full URL
+                if href.startswith('http'):
+                    article_links.append(href)
         
-        # Remove duplicates
+        # Remove duplicates and return
         article_links = list(set(article_links))
-        print(f"Total unique article links found: {len(article_links)}")
         return article_links
     else:
         print(f"Failed to get archive: {r.status_code}")
         return []
-    
 
-# Just run the archive analysis for now - don't scrape articles yet
-archive_url = f"https://www.antiwar.com/past/20250601.html"
-print(f"Analyzing archive structure: {archive_url}")
+
+# Test the updated function
+archive_url = "https://www.antiwar.com/past/20250601.html"
+print(f"Getting ALL article URLs from: {archive_url}")
 
 article_urls = get_article_urls_from_archive(archive_url)
-print("\nFound these article URLs:")
-for url in article_urls:
-    print(f"  - {url}")
 
-print(f"\nAnalysis complete. Check 'page_structure.html' file for full HTML structure.")
-print("Run this script to understand the page layout, then we'll improve the link extraction.")
+print(f"\nFound {len(article_urls)} total article links:")
+print("="*50)
+
+# Group by domain for better visualization
+
+url_by_domain = {}
+for url in article_urls:
+    domain = urlparse(url).netloc
+    if domain not in url_by_domain:
+        url_by_domain[domain] = []
+    url_by_domain[domain].append(url)
+
+# Print grouped by domain
+for domain, urls in url_by_domain.items():
+    print(f"\n{domain} ({len(urls)} articles):")
+    for url in urls[:5]:  # Show first 5 from each domain
+        print(f"  - {url}")
+    if len(urls) > 5:
+        print(f"  ... and {len(urls) - 5} more")
+
+print(f"\nTotal articles found: {len(article_urls)}")
+print("External domains found:", len(url_by_domain))
