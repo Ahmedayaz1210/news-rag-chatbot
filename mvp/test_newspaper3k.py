@@ -44,8 +44,6 @@ def test_newspaper3k_on_url(url):
             'url': url
         }
 
-# Test URLs from your actual data
-# Test URLs from your actual data - let's try more diverse sites
 test_urls = [
     # Original working ones
     "https://www.aljazeera.com/news/2025/5/29/cambodia-pm-urges-calm-after-border-clash-with-thailand-leaves-soldier-dead",
