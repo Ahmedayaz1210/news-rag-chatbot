@@ -633,50 +633,5 @@ def main():
         print("❌ FAILED to scrape archive page")
 
 
-# Test functions for development and debugging
-def test_section_mapping():
-    """
-    Test function to verify section mapping functionality.
-    Run this to see how articles are categorized before doing a full scrape.
-    """
-    archive_url = "https://www.antiwar.com/past/20250601.html"
-    
-    # Test URL extraction and section mapping
-    all_urls, section_mappings = get_all_article_urls(archive_url)
-    
-    print(f"\nSection Mapping Test Results:")
-    print(f"Total URLs found: {len(all_urls)}")
-    print(f"URLs with section mappings: {len(section_mappings)}")
-    
-    # Show first 10 examples
-    print(f"\nFirst 10 examples:")
-    count = 0
-    for url, sections in section_mappings.items():
-        if count < 10:
-            print(f"{count+1}. {sections} - {url[:60]}...")
-        count += 1
-        if count >= 10:
-            break
-    
-    # Show section statistics
-    all_sections = set()
-    for sections in section_mappings.values():
-        all_sections.update(sections)
-    
-    print(f"\nAll sections found: {sorted(list(all_sections))}")
-    
-    # Show section counts
-    section_counts = {}
-    for sections in section_mappings.values():
-        for section in sections:
-            section_counts[section] = section_counts.get(section, 0) + 1
-    
-    print(f"\nSection counts:")
-    for section, count in sorted(section_counts.items()):
-        print(f"  {section}: {count} articles")
-    
-    return section_mappings
-
-
 if __name__ == "__main__":
     main()
