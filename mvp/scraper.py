@@ -209,6 +209,7 @@ def get_all_article_urls(archive_url):
         article_links.append(href)
     
     # Remove duplicates and create final URL list
+    # Converting back to list so can use its methods
     unique_links = list(set(article_links))
     print(f"Found {len(unique_links)} unique article URLs")
     
@@ -217,6 +218,43 @@ def get_all_article_urls(archive_url):
     
     return unique_links, section_mappings
 
+
+def scrape_single_article_with_fallback(url):
+    """
+    Scrape a single article with archive.is fallback for failed URLs.
+    
+    Args:
+        url (str): Article URL to scrape
+        
+    Returns:
+        dict: Article data with url, title, authors, content, and scrape_status
+    """
+    # Try original URL first
+    result = scrape_single_article(url)
+    
+    if result['scrape_status'] == 'success':
+        return result
+    
+    # Original failed - try archive.is
+    print(f"Original failed ({result['scrape_status']}), trying archive.is...")
+    time.sleep(2)  # Rate limiting
+    
+    archive_url = f"https://archive.is/{url}"
+    archive_result = scrape_single_article(archive_url)
+    
+    if archive_result['scrape_status'] == 'success':
+        # Keep original URL for tracking
+        archive_result['url'] = url  
+        return archive_result
+    
+    # Both failed
+    return {
+        'url': url,
+        'title': None,
+        'authors': [],
+        'content': None,
+        'scrape_status': f'failed: original and archive both failed'
+    }
 
 def scrape_single_article(url):
     """
@@ -419,7 +457,8 @@ def update_progress_file(archive_url, date, chunk_articles, chunk_number, total_
     print(f"Updated progress: {progress_data['completed_articles']}/{total_urls} articles completed")
 
 
-def scrape_articles_with_checkpoints(urls, archive_url, date, url_sections):
+def scrape_articles_with_checkpoints(urls, archive_url, date, 
+                                     url_sections):
     """
     Scrape articles in chunks with checkpoint saving for crash recovery.
     Now includes section categorization for each article.
@@ -448,14 +487,14 @@ def scrape_articles_with_checkpoints(urls, archive_url, date, url_sections):
         
         # Scrape chunk using multiple threads for speed
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            chunk_articles = list(executor.map(scrape_single_article, chunk_urls))
+            chunk_articles = list(executor.map(scrape_single_article_with_fallback, chunk_urls))
         
         # Add metadata and section information to each article
         for j, article in enumerate(chunk_articles):
             url = chunk_urls[j]
             article['progress_index'] = i + j
             # Add section categories from our mapping
-            article['categories'] = url_sections.get(url, ['Unknown'])
+            article['categories'] = url_sections[url]
         
         # Save chunk and update progress immediately
         save_articles_to_file(chunk_articles, date, archive_url)
