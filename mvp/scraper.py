@@ -52,6 +52,7 @@ def extract_date_from_archive_url(archive_url):
     return None
 
 
+
 def extract_section_mappings_from_soup(soup, all_urls):
     """
     Extract section mappings from existing BeautifulSoup object.
@@ -66,9 +67,63 @@ def extract_section_mappings_from_soup(soup, all_urls):
     """
     url_to_sections = {}
     
-    # Find all section headers with class="hotspot"
+    # 1. Handle main news section (appears before any hotspots)
+    main_news_table = soup.find('table', {'bgcolor': '#F3F5F6'})
+    if main_news_table:
+        main_news_links = main_news_table.find_all('a', href=True)
+        main_news_count = 0
+        
+        for link in main_news_links:
+            href = link['href']
+            if href in all_urls and href not in url_to_sections:
+                url_to_sections[href] = set(['News'])
+                main_news_count += 1
+        
+        print(f"Found {main_news_count} articles in main news section")
+    
+    # 2. Handle Viewpoints section (uses class="border2")
+    viewpoints_headers = soup.find_all('td', class_='border2')
+    for header in viewpoints_headers:
+        header_text = header.get_text(strip=True)
+        if 'viewpoints' in header_text.lower():
+            # Find the parent table and get all links in it
+            parent_table = header.find_parent('table')
+            if parent_table:
+                viewpoints_links = parent_table.find_all('a', href=True)
+                viewpoints_count = 0
+                
+                for link in viewpoints_links:
+                    href = link['href']
+                    if href in all_urls:
+                        if href not in url_to_sections:
+                            url_to_sections[href] = set()
+                        url_to_sections[href].add('Viewpoints')
+                        viewpoints_count += 1
+                
+                print(f"Found {viewpoints_count} articles in Viewpoints section")
+    
+    # 3. Handle Spotlight section (uses class="spotheadlines")
+    spotlight_headers = soup.find_all('td', class_='spotheadlines')
+    for header in spotlight_headers:
+        # Find the parent table and get all links in it
+        parent_table = header.find_parent('table')
+        if parent_table:
+            spotlight_links = parent_table.find_all('a', href=True)
+            spotlight_count = 0
+            
+            for link in spotlight_links:
+                href = link['href']
+                if href in all_urls:
+                    if href not in url_to_sections:
+                        url_to_sections[href] = set()
+                    url_to_sections[href].add('Spotlight')
+                    spotlight_count += 1
+            
+            print(f"Found {spotlight_count} articles in Spotlight section")
+    
+    # 4. Handle hotspot sections (original logic)
     section_headers = soup.find_all('td', class_='hotspot')
-    print(f"Found {len(section_headers)} section headers")
+    print(f"Found {len(section_headers)} hotspot section headers")
     
     for header in section_headers:
         section_name = header.get_text(strip=True)
@@ -107,7 +162,7 @@ def extract_section_mappings_from_soup(soup, all_urls):
             if next_element.find('td', class_='hotspot'):
                 break
         
-        print(f"  Found {articles_found} articles in section '{section_name}'")
+        print(f"  Found {articles_found} articles in hotspot section '{section_name}'")
     
     # Create complete mapping for ALL URLs
     complete_mapping = {}
@@ -126,12 +181,16 @@ def extract_section_mappings_from_soup(soup, all_urls):
                 complete_mapping[url] = ['News']
             elif 'antiwar.com/blog' in url:
                 complete_mapping[url] = ['Blog']
+            elif 'antiwar.com/news/?articleid=' in url:
+                # Handle internal antiwar.com news articles (like URL #7)
+                complete_mapping[url] = ['News']
             else:
                 # External news sites without explicit sections
                 complete_mapping[url] = ['Mixed News']
     
     print(f"Section mapping complete: {sectioned_count} URLs with explicit sections, {len(all_urls)} total URLs mapped")
     return complete_mapping
+
 
 
 def get_all_article_urls(archive_url):
