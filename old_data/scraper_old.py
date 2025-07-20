@@ -35,7 +35,7 @@ CHUNK_SIZE = 20  # Save progress every N articles
 MAX_WORKERS = 5  # Number of concurrent threads
 
 START_DATE = "2025-07-12"  # Change this
-END_DATE = "2025-07-12"    # Change this
+END_DATE = "2025-07-19"    # Change this
 
 def date_to_archive_url(date):
     """Convert 2025-07-12 to https://www.antiwar.com/past/20250712.html"""
@@ -43,7 +43,7 @@ def date_to_archive_url(date):
 
 def create_year_directory(year):
     """Create data/YEAR/ directory"""
-    year_dir = os.path.join('..','data', str(year))
+    year_dir = os.path.join('data', str(year))
     os.makedirs(year_dir, exist_ok=True)
     return year_dir
 
@@ -340,10 +340,9 @@ def scrape_single_article(url):
     try:
         # Download and parse article using newspaper3k
         article = Article(url)
-        article.config.request_timeout = 15  # Increase from 7 to 15 seconds
         article.download()
         article.parse()
-
+        
         # Clean the content
         content = article.text
         if content:
@@ -472,35 +471,31 @@ def update_progress_file(archive_url, date, chunk_articles, chunk_number, total_
             progress_data = json.load(f)
     else:
         progress_data = {
-            "year": year
-            }
-    
-    # Load existing progress for this specific date OR create new
-    date_key = f"date_{date}"
-    if date_key in progress_data:
-        current_date_progress = progress_data[date_key]
-    else:
-        current_date_progress = {
-            "date": date,
-            "archive_url": archive_url,
-            "total_articles": total_urls,
-            "completed_articles": 0,
-            "failed_articles": 0,
-            "chunks_completed": 0
+            "year": year,
+            "completed_dates": [],
+            "failed_dates": [],
+            "total_articles_scraped": 0
         }
     
-    # ADD to existing counts (don't reset!)
+    # Update progress for this specific date
+    current_date_progress = {
+        "date": date,
+        "archive_url": archive_url,
+        "total_articles": total_urls,
+        "completed_articles": 0,
+        "failed_articles": 0,
+        "chunks_completed": chunk_number
+    }
+    
+    # Count successes/failures in this chunk
     for article in chunk_articles:
         if article['scrape_status'] == 'success':
             current_date_progress['completed_articles'] += 1
         else:
             current_date_progress['failed_articles'] += 1
     
-    # Update chunk number
-    current_date_progress['chunks_completed'] = chunk_number
-    
-    # Save back to progress data
-    progress_data[date_key] = current_date_progress
+    # Update or add this date's progress
+    progress_data[f"date_{date}"] = current_date_progress
     
     with open(progress_filename, 'w', encoding='utf-8') as f:
         json.dump(progress_data, f, indent=2, ensure_ascii=False)
@@ -662,6 +657,13 @@ def scrape_full_archive_page(archive_url):
     for section, count in sorted(section_counts.items()):
         print(f"  {section}: {count} articles")
     
+    # Filter out already-completed URLs
+    if progress_data:
+        remaining_urls = filter_remaining_urls(all_urls, completed_urls)
+    else:
+        remaining_urls = all_urls
+        print(f"No existing progress - will scrape all {len(all_urls)} URLs")
+    
     # Check if all articles are already completed
     if progress_data == "completed":
         print("\n🎉 All articles already completed! Loading existing data...")
@@ -672,11 +674,6 @@ def scrape_full_archive_page(archive_url):
             final_data = json.load(f)
         print(f"Loaded {len(final_data['articles'])} existing articles")
         return final_data
-    elif progress_data:
-        remaining_urls = filter_remaining_urls(all_urls, completed_urls)
-    else:
-        remaining_urls = all_urls
-        print(f"No existing progress - will scrape all {len(all_urls)} URLs")
     
     # Scrape remaining articles with checkpoint system and section mapping
     print(f"\n📥 Scraping {len(remaining_urls)} remaining articles...")
@@ -736,7 +733,7 @@ def main():
         else:
             print(f"❌ {date}: Failed")
         
-        time.sleep(5)  # Be nice to server
+        time.sleep(2)  # Be nice to server
 
 
 
