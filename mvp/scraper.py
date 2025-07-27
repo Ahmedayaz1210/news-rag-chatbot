@@ -34,11 +34,11 @@ HEADERS = {
 CHUNK_SIZE = 20  # Save progress every N articles
 MAX_WORKERS = 5  # Number of concurrent threads
 
-START_DATE = "2025-07-12"  # Change this
-END_DATE = "2025-07-12"    # Change this
+START_DATE = "2022-07-12"  # Change this
+END_DATE = "2022-07-12"    # Change this
 
 def date_to_archive_url(date):
-    """Convert 2025-07-12 to https://www.antiwar.com/past/20250712.html"""
+    """Convert YYYY-MM-DD to https://www.antiwar.com/past/YYYYMMDD.html"""
     return f"https://www.antiwar.com/past/{date.replace('-', '')}.html"
 
 def create_year_directory(year):
