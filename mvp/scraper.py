@@ -34,8 +34,8 @@ HEADERS = {
 CHUNK_SIZE = 20  # Save progress every N articles
 MAX_WORKERS = 5  # Number of concurrent threads
 
-START_DATE = "2022-07-12"  # Change this
-END_DATE = "2022-07-12"    # Change this
+START_DATE = "2025-02-25"  # Change this
+END_DATE = "2025-02-28"    # Change this
 
 def date_to_archive_url(date):
     """Convert YYYY-MM-DD to https://www.antiwar.com/past/YYYYMMDD.html"""
