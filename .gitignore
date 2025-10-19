@@ -2,3 +2,4 @@ venv
 old_data
 data
 txt_data
+mvp/upload_parse_test.py

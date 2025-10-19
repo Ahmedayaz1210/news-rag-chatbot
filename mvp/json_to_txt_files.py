@@ -180,7 +180,7 @@ def process_year(year):
 
 if __name__ == "__main__":
     # CHANGE THIS YEAR TO PROCESS DIFFERENT YEARS
-    YEAR_TO_PROCESS = 2025  # ← EDIT THIS
+    YEAR_TO_PROCESS = 2020  # ← EDIT THIS
     
     print(f"=== JSON to TXT Converter for Year {YEAR_TO_PROCESS} ===\n")
     
